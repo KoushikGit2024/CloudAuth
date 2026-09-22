@@ -35,11 +35,16 @@ class AuthController extends Controller
      */
     public function callback(Request $request)
     {
+        // Handle error responses from Cognito (e.g., user cancelled login)
+        if ($request->has('error')) {
+            return redirect('/')->withErrors(['error' => $request->input('error_description', 'Authentication failed.')]);
+        }
+
         $state = $request->input('state');
         $code = $request->input('code');
 
-        if ($state !== Session::get('oauth_state')) {
-            return response('Invalid State / CSRF Attempt', 403);
+        if (!$state || $state !== Session::get('oauth_state')) {
+            return redirect('/')->withErrors(['error' => 'Invalid State / CSRF Attempt']);
         }
 
         // I exchange my code for tokens
@@ -54,23 +59,27 @@ class AuthController extends Controller
         ]);
 
         if ($response->failed()) {
-            return response('Failed to exchange code for tokens', 500);
+            return redirect('/')->withErrors(['error' => 'Failed to exchange code for tokens. Please try again.']);
         }
 
         $tokens = $response->json();
         
-        // I decode the ID Token (Basic Decoding - JWT Signature verification omitted for simplicity)
-        $payload = explode('.', $tokens['id_token'])[1];
-        $userInfo = json_decode(base64_decode($payload), true);
+        try {
+            // I decode the ID Token (Basic Decoding - JWT Signature verification omitted for simplicity)
+            $payload = explode('.', $tokens['id_token'])[1];
+            $userInfo = json_decode(base64_decode($payload), true);
 
-        // I store the user in the session
-        Session::put('user', [
-            'username' => $userInfo['cognito:username'] ?? $userInfo['sub'],
-            'email' => $userInfo['email'] ?? null,
-            'sub' => $userInfo['sub'],
-        ]);
+            // I store the user in the session
+            Session::put('user', [
+                'username' => $userInfo['cognito:username'] ?? $userInfo['sub'],
+                'email' => $userInfo['email'] ?? null,
+                'sub' => $userInfo['sub'],
+            ]);
 
-        return redirect('/dashboard')->with('success', 'Successfully signed in via AWS Cognito.');
+            return redirect('/dashboard')->with('success', 'Successfully signed in via AWS Cognito.');
+        } catch (\Exception $e) {
+            return redirect('/')->withErrors(['error' => 'Failed to process user information.']);
+        }
     }
 
     /**

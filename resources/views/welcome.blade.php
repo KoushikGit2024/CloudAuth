@@ -40,6 +40,20 @@
                 Please sign in to access the secure dashboard. Authentication is handled securely via AWS Cognito.
             </p>
             
+            @if ($errors->any())
+                <div class="mb-6 p-4 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm text-left">
+                    <div class="flex items-center gap-2 font-semibold mb-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                        Authentication Error
+                    </div>
+                    <ul class="list-disc pl-5">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            
             @if ($user)
                 <div class="flex flex-col gap-3">
                     <a href="/dashboard" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition duration-200">
